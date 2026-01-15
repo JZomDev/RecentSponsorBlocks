@@ -100,6 +100,35 @@ function getFilteredSortedRows(){
       return lang === 'en';
     });
   }
+
+  // apply time-range filter if inputs are present
+  const startInput = document.getElementById('filterStart');
+  const endInput = document.getElementById('filterEnd');
+  if ((startInput && startInput.value) || (endInput && endInput.value)){
+    // inputs are date-only; treat start as that day's midnight (00:00)
+    // and end as the following day's midnight so the end date is inclusive
+    function parseDateStart(v){
+      if (!v) return null;
+      const parts = v.split('-');
+      const y = parseInt(parts[0],10); const m = parseInt(parts[1],10) - 1; const d = parseInt(parts[2],10);
+      return new Date(y, m, d, 0, 0, 0, 0);
+    }
+    function parseDateEndExclusive(v){
+      if (!v) return null;
+      const parts = v.split('-');
+      const y = parseInt(parts[0],10); const m = parseInt(parts[1],10) - 1; const d = parseInt(parts[2],10);
+      return new Date(y, m, d + 1, 0, 0, 0, 0);
+    }
+    let startDate = startInput && startInput.value ? parseDateStart(startInput.value) : null;
+    let endDate = endInput && endInput.value ? parseDateEndExclusive(endInput.value) : null;
+    rows = rows.filter(r => {
+      if (!r.timeSubmitted) return false;
+      const t = new Date(r.timeSubmitted);
+      if (startDate && t < startDate) return false;
+      if (endDate && t >= endDate) return false;
+      return true;
+    });
+  }
   if (sortState.key){
     rows.sort((a,b) => {
       if (sortState.key === 'timeSubmitted'){
@@ -241,6 +270,42 @@ window.addEventListener('DOMContentLoaded', () => {
   const cb = document.getElementById('filterEnglishOnly');
   if (cb){
     cb.addEventListener('change', () => { displayedCount = PAGE_SIZE; window.scrollTo({ top: 0 }); renderTable(); });
+  }
+  // initialize time filter defaults (start = 48 hours ago's date, end = today)
+  const startInput = document.getElementById('filterStart');
+  const endInput = document.getElementById('filterEnd');
+  function formatLocalDate(d){
+    const yy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yy}-${mm}-${dd}`;
+  }
+  if (startInput){ const s = new Date(Date.now() - 48*3600*1000); startInput.value = formatLocalDate(s); startInput.addEventListener('change', ()=>{ displayedCount = PAGE_SIZE; window.scrollTo({ top:0 }); renderTable(); }); }
+  if (endInput){ const e = new Date(); endInput.value = formatLocalDate(e); endInput.addEventListener('change', ()=>{ displayedCount = PAGE_SIZE; window.scrollTo({ top:0 }); renderTable(); }); }
+  // wire download button
+  const dl = document.getElementById('downloadJson');
+  if (dl){
+    dl.addEventListener('click', () => {
+      const rows = getFilteredSortedRows();
+      const out = rows.map(r => ({
+        videoID: r.videoID,
+        timeSubmitted: r.timeSubmitted,
+        title: r.title || '',
+        sponsors: r.sponsors || [],
+        description: r.description || '',
+        descriptionLanguage: r.descriptionLanguage || ''
+      }));
+      const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date().toISOString().replace(/[:.]/g,'-');
+      a.download = `filtered-${now}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
   }
   loadData();
 });
