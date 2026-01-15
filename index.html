@@ -11,13 +11,19 @@
     <h1>SponsorBlocks recent blocking list</h1>
     <div class="controls">
       <span id="message" aria-live="polite"></span>
+      <label style="margin-left:16px;display:inline-flex;align-items:center;gap:8px;">
+        <input id="filterEnglishOnly" type="checkbox"> Show English only
+      </label>
     </div>
     <table id="dataTable">
       <thead>
         <tr>
           <th data-key="timeSubmitted">Time submitted</th>
           <th data-key="video">Video link</th>
+          <th data-key="title">Title</th>
           <th data-key="sponsorCount">Sponsors found</th>
+          <th data-key="description">Description</th>
+          <th data-key="descriptionLanguage">Language</th>
         </tr>
       </thead>
       <tbody></tbody>

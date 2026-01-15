@@ -8,9 +8,14 @@ h1{margin:0 0 12px;font-weight:700;font-size:20px;color:#07132a}
 #message{color:#334155;font-size:14px}
 table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed;overflow:hidden} 
 /* preferred column widths to keep content within bounds */
-thead th:nth-child(1){width:22%}
-thead th:nth-child(2){width:28%}
-thead th:nth-child(3){width:50%}
+/* preferred column widths to keep content within bounds (six columns)
+	1: time, 2: video, 3: title, 4: sponsors, 5: description, 6: language */
+thead th:nth-child(1){width:14%}
+thead th:nth-child(2){width:22%}
+thead th:nth-child(3){width:20%}
+thead th:nth-child(4){width:24%}
+thead th:nth-child(5){width:18%}
+thead th:nth-child(6){width:6%}
 /* allow long links and text to wrap instead of overflowing */
 th, td{word-break:break-word;overflow-wrap:anywhere;white-space:normal} 
 td a{word-break:break-all}
@@ -25,4 +30,12 @@ a{color:#0366d6;text-decoration:none}
 a:hover{text-decoration:underline}
 ul{margin:0;padding-left:18px}
 .footer{position:fixed;bottom:0;left:0;width:100%;background:rgba(255,255,255,0.95);backdrop-filter:blur(6px);border-top:1px solid #eef2ff;color:#64748b;font-size:13px;padding:12px 0;text-align:center;z-index:999}
-@media (max-width:700px){.container{padding:16px;margin:18px}.controls{flex-direction:column;align-items:flex-start;gap:8px}thead th:nth-child(2),tbody td:nth-child(2){display:none}}
+@media (max-width:700px){
+	.container{padding:16px;margin:18px}
+	.controls{flex-direction:column;align-items:flex-start;gap:8px}
+	/* hide video, title, description and language on narrow screens to reduce clutter */
+	thead th:nth-child(2),tbody td:nth-child(2),
+	thead th:nth-child(3),tbody td:nth-child(3),
+	thead th:nth-child(5),tbody td:nth-child(5),
+	thead th:nth-child(6),tbody td:nth-child(6){display:none}
+}

@@ -4,11 +4,65 @@ const tbody = table.querySelector('tbody');
 let data = [];
 let sortState = { key: 'timeSubmitted', asc: false };
 
+// Lazy-loading / pagination settings
+const PAGE_SIZE = 50; // items to add per scroll
+let displayedCount = PAGE_SIZE;
+let isLoadingMore = false;
+let rafScheduled = false;
+
+// description modal: inject styles and create modal container
+function createDescriptionModal(){
+  if (document.getElementById('desc-modal-overlay')) return;
+  const style = document.createElement('style');
+  style.textContent = `
+  #desc-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:9999}
+  #desc-modal{background:#fff;max-width:900px;width:90%;max-height:80vh;overflow:auto;border-radius:6px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}
+  #desc-modal .desc-close{position:absolute;right:12px;top:8px;background:transparent;border:none;font-size:20px;cursor:pointer}
+  #desc-modal pre{white-space:pre-wrap;word-wrap:break-word;font-family:inherit;font-size:14px}
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'desc-modal-overlay';
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+
+  const modal = document.createElement('div');
+  modal.id = 'desc-modal';
+  modal.style.position = 'relative';
+
+  const close = document.createElement('button');
+  close.className = 'desc-close';
+  close.innerHTML = '✕';
+  close.addEventListener('click', () => { overlay.style.display = 'none'; });
+
+  const content = document.createElement('div');
+  content.id = 'desc-modal-content';
+  const pre = document.createElement('pre');
+  pre.id = 'desc-modal-pre';
+  content.appendChild(pre);
+
+  modal.appendChild(close);
+  modal.appendChild(content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+function openDescriptionModal(text){
+  createDescriptionModal();
+  const overlay = document.getElementById('desc-modal-overlay');
+  const pre = document.getElementById('desc-modal-pre');
+  if (pre) pre.textContent = text || '';
+  if (overlay) overlay.style.display = 'flex';
+}
+
 Array.from(table.querySelectorAll('th')).forEach(th => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
     const key = th.getAttribute('data-key');
     if (sortState.key === key) sortState.asc = !sortState.asc; else { sortState.key = key; sortState.asc = true; }
+    // reset pagination when sort changes
+    displayedCount = PAGE_SIZE;
+    window.scrollTo({ top: 0 });
     renderTable();
   });
 });
@@ -22,8 +76,12 @@ function loadData(){
     data = json.map(item => ({
       timeSubmitted: item.timeSubmitted,
       videoID: item.videoID,
-      sponsors: Array.isArray(item.sponsors) ? item.sponsors : []
+      title: item.title || '',
+      sponsors: Array.isArray(item.sponsors) ? item.sponsors : [],
+      description: item.description || '',
+      descriptionLanguage: (item.descriptionLanguage || '').toLowerCase(),
     }));
+    displayedCount = PAGE_SIZE;
     message.textContent = `Loaded ${data.length} items.`;
     renderTable();
   }).catch(err => {
@@ -31,10 +89,17 @@ function loadData(){
   });
 }
 
-function renderTable(){
+function getFilteredSortedRows(){
   let rows = data.slice();
-  // skip entries that have no sponsors to display
   rows = rows.filter(item => Array.isArray(item.sponsors) && item.sponsors.length > 0);
+  // apply English-only filter if checkbox enabled
+  const cb = document.getElementById('filterEnglishOnly');
+  if (cb && cb.checked){
+    rows = rows.filter(r => {
+      const lang = (r.descriptionLanguage || '').toLowerCase();
+      return lang === 'en';
+    });
+  }
   if (sortState.key){
     rows.sort((a,b) => {
       if (sortState.key === 'timeSubmitted'){
@@ -57,9 +122,15 @@ function renderTable(){
       return 0;
     });
   }
+  return rows;
+}
+
+function renderTable(){
+  const rows = getFilteredSortedRows();
+  const visible = rows.slice(0, displayedCount);
 
   tbody.innerHTML = '';
-  rows.forEach(item => {
+  visible.forEach(item => {
     const tr = document.createElement('tr');
     const timeTd = document.createElement('td');
     timeTd.textContent = item.timeSubmitted ? new Date(item.timeSubmitted).toLocaleString() : '';
@@ -96,7 +167,35 @@ function renderTable(){
       });
       sponsorsTd.appendChild(ul);
     }
-    tr.appendChild(timeTd); tr.appendChild(videoTd); tr.appendChild(sponsorsTd);
+
+    const descTd = document.createElement('td');
+    const descTxt = item.description || '';
+    if (!descTxt){
+      descTd.textContent = '';
+    } else {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'desc-preview';
+      const preview = descTxt.length > 120 ? (descTxt.slice(0, 120).replace(/\s+\S*$/, '') + '…') : descTxt;
+      btn.textContent = preview;
+      btn.title = 'Click to view full description';
+      btn.addEventListener('click', () => openDescriptionModal(descTxt));
+      descTd.appendChild(btn);
+    }
+
+    // title column (after video link)
+    const titleTd = document.createElement('td');
+    titleTd.textContent = item.title || '';
+
+    tr.appendChild(timeTd);
+    tr.appendChild(videoTd);
+    tr.appendChild(titleTd);
+    tr.appendChild(sponsorsTd);
+    tr.appendChild(descTd);
+    // language column
+    const langTd = document.createElement('td');
+    langTd.textContent = item.descriptionLanguage || '';
+    tr.appendChild(langTd);
     tbody.appendChild(tr);
   });
 
@@ -105,6 +204,43 @@ function renderTable(){
     th.classList.remove('sort-asc','sort-desc');
     if (sortState.key === key) th.classList.add(sortState.asc ? 'sort-asc' : 'sort-desc');
   });
+
+  // update status message with visible count
+  message.textContent = `Loaded ${data.length} items — showing ${visible.length}/${getFilteredSortedRows().length}.`;
 }
 
-window.addEventListener('DOMContentLoaded', loadData);
+function loadMore(){
+  if (isLoadingMore) return;
+  const total = getFilteredSortedRows().length;
+  if (displayedCount >= total) return;
+  isLoadingMore = true;
+  setTimeout(() => {
+    displayedCount = Math.min(displayedCount + PAGE_SIZE, total);
+    renderTable();
+    isLoadingMore = false;
+  }, 50);
+}
+
+function onScroll(){
+  if (rafScheduled) return;
+  rafScheduled = true;
+  requestAnimationFrame(() => {
+    rafScheduled = false;
+    const triggerDistance = 200; // px from bottom
+    if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - triggerDistance)){
+      loadMore();
+    }
+  });
+}
+
+window.addEventListener('scroll', onScroll);
+
+window.addEventListener('DOMContentLoaded', () => { 
+  createDescriptionModal(); 
+  // wire filter checkbox to reset pagination and re-render
+  const cb = document.getElementById('filterEnglishOnly');
+  if (cb){
+    cb.addEventListener('change', () => { displayedCount = PAGE_SIZE; window.scrollTo({ top: 0 }); renderTable(); });
+  }
+  loadData();
+});
