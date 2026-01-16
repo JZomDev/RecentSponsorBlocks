@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sponsor Clusters</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Sponsor Clusters</h1>
+    <div class="controls">
+      <span id="message" aria-live="polite"></span>
+      <button id="downloadBtn" style="margin-left:12px">Download JSON</button>
+      <label style="margin-left:16px;display:inline-flex;align-items:center;gap:8px;">
+        <input id="filterEnglishOnly" type="checkbox"> Show English only
+      </label>
+      <div style="margin-left:16px;display:inline-flex;align-items:center;gap:8px;">
+        <label style="font-size:13px;color:#334155">Start (date):</label>
+        <input id="filterStart" type="date" />
+        <label style="font-size:13px;color:#334155">End (date):</label>
+        <input id="filterEnd" type="date" />
+        <a href="index.html" style="margin-left:8px;align-self:center">Back to list</a>
+      </div>
+    </div>
+
+    <table id="clustersTable">
+      <thead>
+        <tr>
+          <th>Domain / Representative</th>
+          <th>Count</th>
+          <th>Unique Links</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script src="clusters.js"></script>
+  <footer class="footer">Sponsor clusters derived from <a href="cdn/json/trimmed.json">trimmed.json</a></footer>
+</body>
+</html>
