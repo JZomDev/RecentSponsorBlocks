@@ -73,11 +73,13 @@ function loadData(){
     if (!r.ok) throw new Error('Network response was not ok: ' + r.status);
     return r.json();
   }).then(json => {
-    data = json.map(item => ({
+    // keep only items that have at least one sponsor
+    const src = Array.isArray(json) ? json : [];
+    data = src.filter(item => Array.isArray(item.sponsors) && item.sponsors.length > 0).map(item => ({
       timeSubmitted: item.timeSubmitted,
       videoID: item.videoID,
       title: item.title || '',
-      sponsors: Array.isArray(item.sponsors) ? item.sponsors : [],
+      sponsors: item.sponsors || [],
       description: item.description || '',
       descriptionLanguage: (item.descriptionLanguage || '').toLowerCase(),
     }));
