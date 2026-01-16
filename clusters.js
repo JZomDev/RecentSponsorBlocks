@@ -69,7 +69,7 @@
     let rows = clustersData.slice();
     // english-only filter
     if (cbEnglish && cbEnglish.checked){
-      rows = rows.filter(r => (r.language || (r.rep||r.representative||'')).toLowerCase() === 'en');
+      rows = rows.filter(r => (r.language || '').toLowerCase() === 'en');
     }
     // prepare date filter bounds
     let sdate = startInput && startInput.value ? parseDateStart(startInput.value) : null;
@@ -77,7 +77,7 @@
 
     // For each row compute `_filteredLinks` based on unique_data timeSubmitted and date filters
     rows = rows.map(r => {
-      const ud = r.unique_data || r.uniqueData || r.unique_links || r.uniqueLinks || [];
+      const ud = r.unique_data || [];
       let filtered = [];
       if (!sdate && !edate){
         filtered = Array.isArray(ud) ? ud.slice() : [];
@@ -117,15 +117,15 @@
     const dir = sortState.dir === 'asc' ? 1 : -1;
     rows.sort((a,b) => {
       if (key === 'count') {
-        const ac = (Array.isArray(a._filteredLinks) ? a._filteredLinks.length : ((a.unique_data).length || (a.count||0)));
-        const bc = (Array.isArray(b._filteredLinks) ? b._filteredLinks.length : ((b.unique_data).length || (b.count||0)));
+        const ac = (Array.isArray(a._filteredLinks) ? a._filteredLinks.length : ((a.unique_data||[]).length || (a.count||0)));
+        const bc = (Array.isArray(b._filteredLinks) ? b._filteredLinks.length : ((b.unique_data||[]).length || (b.count||0)));
         return dir * (ac - bc);
       }
       if (key === 'domain') return dir * String((a.domain||'')).localeCompare(String((b.domain||'')));
-      if (key === 'representative') return dir * String((a.representative||a.rep||'')).localeCompare(String((b.representative||b.rep||'')));
+      if (key === 'representative') return dir * String((a.representative||'')).localeCompare(String((b.representative||'')));
       if (key === 'links') {
-        const la = (Array.isArray(a._filteredLinks) ? a._filteredLinks.length : (a.unique_data).length) || 0;
-        const lb = (Array.isArray(b._filteredLinks) ? b._filteredLinks.length : (b.unique_data).length) || 0;
+        const la = (Array.isArray(a._filteredLinks) ? a._filteredLinks.length : (a.unique_data||[]).length) || 0;
+        const lb = (Array.isArray(b._filteredLinks) ? b._filteredLinks.length : (b.unique_data||[]).length) || 0;
         return dir * (la - lb);
       }
       return 0;
@@ -139,10 +139,10 @@
       const repTd = document.createElement('td');
       repTd.textContent = c.representative || c.rep || '';
       const countTd = document.createElement('td');
-      const effectiveCount = Array.isArray(c._filteredLinks) ? c._filteredLinks.length : ((c.unique_data||c.uniqueData||c.unique_links||c.uniqueLinks||[]).length || (c.count||0));
+      const effectiveCount = Array.isArray(c._filteredLinks) ? c._filteredLinks.length : ((c.unique_data||[]).length || (c.count||0));
       countTd.textContent = String(effectiveCount);
       const linksTd = document.createElement('td');
-      const links = Array.isArray(c._filteredLinks) ? c._filteredLinks : (c.unique_data || c.uniqueData || c.unique_links || c.uniqueLinks || []);
+      const links = Array.isArray(c._filteredLinks) ? c._filteredLinks : (c.unique_data || []);
       if (Array.isArray(links) && links.length){
         const ul = document.createElement('ul');
         ul.style.paddingLeft = '18px';
@@ -194,7 +194,7 @@
       // reuse filtering logic by temporarily using renderFiltered's core filters
       // apply english filter
       if (cbEnglish && cbEnglish.checked){
-        rows = rows.filter(r => (r.language || (r.rep||r.representative||'')).toLowerCase() === 'en');
+        rows = rows.filter(r => (r.language || '').toLowerCase() === 'en');
       }
       // apply date filters
       let sdate = startInput && startInput.value ? parseDateStart(startInput.value) : null;
@@ -202,7 +202,7 @@
       if (sdate || edate){
         rows = rows.filter(r => {
           let t = null;
-          const ud = r.unique_data || r.uniqueData;
+          const ud = r.unique_data || [];
           if (Array.isArray(ud) && ud.length){
             const times = ud.map(i => (i && i.timeSubmitted) ? new Date(i.timeSubmitted) : null).filter(Boolean);
             if (times.length) t = new Date(Math.max.apply(null, times.map(d => d.getTime())));
@@ -230,7 +230,7 @@
       const out = rows.map(r => {
         const source = Array.isArray(r._filteredLinks) ? r._filteredLinks : (r.unique_data  || []);
         const urls = (Array.isArray(source) ? source.map(u => (typeof u === 'string') ? u : (u && u.link ? u.link : '')).filter(Boolean) : []);
-        return {representative: r.representative||r.rep||r.domain, domain: r.domain, count: urls.length, unique_links: urls, latestTimeSubmitted: r.latestTimeSubmitted, language: r.language};
+        return {representative: r.representative||r.domain, domain: r.domain, count: urls.length, unique_links: urls, latestTimeSubmitted: r.latestTimeSubmitted, language: r.language};
       });
       const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
       const url = URL.createObjectURL(blob);
